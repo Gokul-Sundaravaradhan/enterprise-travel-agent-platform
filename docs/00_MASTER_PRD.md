@@ -20,13 +20,13 @@ This platform puts a conversational agent in front of those workflows. An employ
 
 **Why this matters**
 
-| Business outcome                          | Mechanism                                                                     |
-| ----------------------------------------- | ----------------------------------------------------------------------------- |
-| Fewer policy violations and less rework   | Policy check happens at booking time via RAG over the actual policy documents |
-| Lower and more predictable LLM spend      | Early-reject intent router, cost-aware model routing, context compaction      |
-| Trustworthy answers                       | Deterministic egress groundedness validation; evals gate CI                   |
-| Safe automation of money-touching actions | ACID booking transactions, idempotency keys, HITL approvals                   |
-| Operability                               | Stateless services, IaC, tracing, golden-set regression tests                 |
+| Business outcome                          | Mechanism                                                                                        |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Fewer policy violations and less rework   | Policy check happens at booking time via RAG over the actual policy documents                    |
+| Lower and more predictable LLM spend      | Early-reject intent router, quota-aware model routing within free allowances, context compaction |
+| Trustworthy answers                       | Deterministic egress groundedness validation; evals gate CI                                      |
+| Safe automation of money-touching actions | ACID booking transactions, idempotency keys, HITL approvals                                      |
+| Operability                               | Stateless services, IaC, tracing, golden-set regression tests                                    |
 
 The repository began as a proof-of-concept (`v0.1.0-poc`, see the [baseline audit](01_STEP_0_POC_BASELINE_AUDIT.md)). This document defines how it becomes a production system, in small, reviewable, independently shippable increments.
 
@@ -180,7 +180,7 @@ Epics are sequenced so each one unblocks the next. Each lives in its own folder 
 `docs/subprojects/sp00_platform_and_dx/`
 Rename the repo and standardize flight/hotel naming (`flight_mcp_server` / `hotel_mcp_server`); upgrade to the MCP Python SDK 2.x (`MCPServer`); add the baseline `pytest` suite; initialize this PRD hierarchy and the PR template. **Outcome:** a clean, symmetric, tested foundation. First ticket: [`TASK-0.1`](subprojects/sp00_platform_and_dx/TASK-0.1_naming_tests_and_dependency_locking.md).
 
-SP00 is a **continuous platform track** that runs alongside the linear epics: it also holds developer-experience tooling and ad-hoc infrastructure chores that no feature epic owns (for example [`TASK-0.2`](subprojects/sp00_platform_and_dx/TASK-0.2_dx_tooling.md): pre-commit hooks and workflow linting; [`TASK-0.3`](subprojects/sp00_platform_and_dx/TASK-0.3_code_coverage.md): code coverage; and [`TASK-0.4`](subprojects/sp00_platform_and_dx/TASK-0.4_api_logging_foundation.md) and [`TASK-0.5`](subprojects/sp00_platform_and_dx/TASK-0.5_api_metrics_traces_and_free_alerting.md): the logging, metrics, tracing and free-alerting foundation for the business APIs, scheduled before SP02's transactional bookings). See its [`EPIC_PRD.md`](subprojects/sp00_platform_and_dx/EPIC_PRD.md).
+SP00 is a **continuous platform track** that runs alongside the linear epics: it also holds developer-experience tooling and ad-hoc infrastructure chores that no feature epic owns (for example [`TASK-0.2`](subprojects/sp00_platform_and_dx/TASK-0.2_dx_tooling.md): pre-commit hooks and workflow linting; [`TASK-0.3`](subprojects/sp00_platform_and_dx/TASK-0.3_code_coverage.md): code coverage; and [`TASK-0.4`](subprojects/sp00_platform_and_dx/TASK-0.4_api_logging_foundation.md) and [`TASK-0.5`](subprojects/sp00_platform_and_dx/TASK-0.5_api_metrics_traces_and_free_alerting.md): the logging, metrics, tracing and free-alerting foundation for the business APIs, scheduled before SP02's transactional bookings; and [`TASK-0.6`](subprojects/sp00_platform_and_dx/TASK-0.6_sbom_generation_and_validation.md): SBOM generation and validation). See its [`EPIC_PRD.md`](subprojects/sp00_platform_and_dx/EPIC_PRD.md).
 
 ### SP01 — CI/CD Pipelines, Dockerization & Serverless Terraform IaC
 
@@ -195,22 +195,22 @@ Migrate SQLite to **async PostgreSQL**; add users and role tiers; implement **AC
 ### SP03 — Stateless Streamable HTTP MCP Layer, Auth & Security Guardrails
 
 `docs/subprojects/sp03_mcp_http_layer_and_security/`
-Move MCP from `stdio` to **stateless Streamable HTTP**; **JWT identity propagation** end to end; **Redis rate limiting**; **PII redaction**; a **fast SLM intent router** for early rejection of off-domain requests; **indirect prompt-injection defense** on tool outputs.
+Move MCP from `stdio` to **stateless Streamable HTTP**; **JWT identity propagation** end to end; **Redis rate limiting**; **PII redaction**; a **fast SLM intent router** for early rejection of off-domain requests; **indirect prompt-injection defense** on tool outputs; and an explicit **MCP trust boundary**, designed as if every MCP server were an external third party, proven by an adversarial test suite.
 
 ### SP04 — LangGraph Multi-Agent Architecture & HITL Workflows
 
 `docs/subprojects/sp04_langgraph_multi_agent_core/`
-A typed **LangGraph state machine** with a **Postgres checkpointer**; a **Supervisor plus three sub-agents** (Booking, Compliance, FinOps), each scoped to specific MCP servers to prevent tool-context bloat; **Pydantic structured outputs**; **Human-in-the-Loop manager-approval interrupts** for out-of-policy bookings.
+A typed **LangGraph state machine** with a **Postgres checkpointer**; a **Supervisor plus three sub-agents** (Booking, Compliance, FinOps), each scoped to specific MCP servers to prevent tool-context bloat; **Pydantic structured outputs**; **Human-in-the-Loop manager-approval interrupts** for out-of-policy bookings; and agent-level security controls (tool policy, plan validation, run budgets, kill switches).
 
 ### SP05 — Native Policy RAG MCP Server & FinOps Sandbox MCP Server
 
 `docs/subprojects/sp05_policy_rag_and_finops_mcp_servers/`
-Build `policy_mcp_server` with **pgvector + BM25 hybrid retrieval and cross-encoder reranking**; build `finops_mcp_server` with **isolated Python sandbox execution** for multi-currency per-diem and GST calculations and chart generation.
+Build `policy_mcp_server` with **pgvector + BM25 hybrid retrieval and cross-encoder reranking**; build `finops_mcp_server` with **isolated Python sandbox execution** for multi-currency per-diem and GST calculations and chart generation; plus RAG and sandbox security (document provenance, retrieval access control, and no execution of model-written code where it can be avoided).
 
 ### SP06 — Dynamic Model Router, Egress Validation, Observability & Evals
 
 `docs/subprojects/sp06_model_router_evals_and_observability/`
-**Cost-aware model switching with fallbacks**; context compaction; a **deterministic price/flight-ID groundedness verifier**; **Langfuse** tracing and LLM-specific metrics (token cost, latency and model choice per request), built on the OpenTelemetry pipeline that SP00 [`TASK-0.4`](subprojects/sp00_platform_and_dx/TASK-0.4_api_logging_foundation.md) and [`TASK-0.5`](subprojects/sp00_platform_and_dx/TASK-0.5_api_metrics_traces_and_free_alerting.md) establish for the business APIs (SP06 does not rebuild API logging, metrics or alerting); a **50-case golden dataset** run with Ragas/DeepEval that **gates CI**.
+**Quota-aware model switching with fallbacks** (local and free-tier models only, so nothing costs money); context compaction; a **deterministic price/flight-ID groundedness verifier**; **Langfuse** tracing and LLM-specific metrics (token cost, latency and model choice per request), built on the OpenTelemetry pipeline that SP00 [`TASK-0.4`](subprojects/sp00_platform_and_dx/TASK-0.4_api_logging_foundation.md) and [`TASK-0.5`](subprojects/sp00_platform_and_dx/TASK-0.5_api_metrics_traces_and_free_alerting.md) establish for the business APIs (SP06 does not rebuild API logging, metrics or alerting); a **50-case golden dataset** whose deterministic checks **gate CI** (model-judged Ragas/DeepEval scores run only with local models and are advisory); an **AI-BOM** (CycloneDX) generated, validated and drift-checked in CI; and adversarial evaluation, budgets and hidden-context controls.
 
 ### Dependency order
 
@@ -234,6 +234,19 @@ SP05's servers can begin in parallel with SP04 once SP03's HTTP transport patter
 | **Concurrency**   | Inventory changes are transactional and lock-protected; writes are idempotent.                                                                      |
 | **Testability**   | Mock LLM mode is retained so the full suite runs offline and deterministically.                                                                     |
 | **Documentation** | Every task ships its PRD; architecture diagrams in README stay in sync.                                                                             |
+
+### Security and Supply-Chain Program
+
+Security is planned ahead of the epics that implement it, under one standing rule: **nothing may cost money** (open-source tools and free tiers only; no paid LLM calls in CI).
+
+| Concern                                      | Where it is planned                                                                                                                                                                                                                                                             |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **AI and MCP threat model**                  | [`02_AI_AND_MCP_SECURITY_THREAT_MODEL.md`](02_AI_AND_MCP_SECURITY_THREAT_MODEL.md): the MCP layer is treated as an external, untrusted party; maps the OWASP LLM Top 10 (2026), the OWASP Agentic Top 10 (2026) and an MCP attack catalog to numbered controls and owning tasks |
+| **SBOM** (generation and validation in CI)   | SP00 [`TASK-0.6`](subprojects/sp00_platform_and_dx/TASK-0.6_sbom_generation_and_validation.md)                                                                                                                                                                                  |
+| **MCP trust boundary and adversarial tests** | SP03 TASK-3.7 and TASK-3.8                                                                                                                                                                                                                                                      |
+| **Agent-level controls**                     | SP04 TASK-4.6                                                                                                                                                                                                                                                                   |
+| **RAG and sandbox security**                 | SP05 TASK-5.6                                                                                                                                                                                                                                                                   |
+| **AI-BOM, red-team evaluation, budgets**     | SP06 TASK-6.6 and TASK-6.7 (the AI component inventory starts in SP03 so SP06 does not retrofit it)                                                                                                                                                                             |
 
 ## 7. Risks & Open Questions
 
