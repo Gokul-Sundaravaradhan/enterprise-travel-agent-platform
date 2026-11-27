@@ -13,18 +13,18 @@
 
 For the reference scenario (10,000 daily active travelers, one booking journey each, 4 turns per journey, 3 tool loops per turn):
 
-| Quantity                                     | Result (baseline design)                                                                                                                                                                                            |
-| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| LLM calls per journey                        | **16**                                                                                                                                                                                                              |
-| Input tokens per journey (gross)             | **109,280**, of which prompt **history is half** and the repeated static prefix is a third                                                                                                                          |
-| Output tokens per journey                    | **1,760**                                                                                                                                                                                                           |
-| Daily demand at 10,000 journeys              | 1.09 billion input tokens, 17.6 million output tokens, 160,000 requests                                                                                                                                             |
-| Peak demand (15% of the day in one hour)     | about **400 requests per minute** (800 in a burst) and **0.23 to 2.7 million input tokens per minute**, depending on how well prefix caching works and how the provider counts cached tokens                        |
-| Effect of prefix caching (document 04)       | Uncached input drops from 109,280 to **23,400** (within-turn reuse) or **9,300** (ideal), a 79% to 92% hit ratio                                                                                                    |
-| Effect of trimming tool results from history | Input per journey drops from 109,280 to **63,920** (-42%), and combined with caching to **12,060** uncached tokens                                                                                                  |
-| What loops cost                              | Input grows **faster than linearly** with tool loops per turn: 2 loops is 65,640, 3 is 109,280, 4 is 163,800                                                                                                        |
-| **Free-tier ceiling**                        | A free hosted tier serves **tens to a few hundred journeys a day**, two to three orders of magnitude below the reference scenario. The $0 deployment therefore runs on a **local model**, with free tiers for demos |
-| ROI shape                                    | At illustrative prices the LLM cost is **cents per journey**, well under 1% of the value of the time saved. The binding constraints are **rate limits, latency and reliability**, not the token bill                |
+| Quantity                                     | Result (baseline design)                                                                                                                                                                                                    |
+| -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| LLM calls per journey                        | **16**                                                                                                                                                                                                                      |
+| Input tokens per journey (gross)             | **109,280**, of which prompt **history is about half** and the repeated static prefix and snapshot about a third                                                                                                            |
+| Output tokens per journey                    | **1,760**                                                                                                                                                                                                                   |
+| Daily demand at 10,000 journeys              | 1.09 billion input tokens, 17.6 million output tokens, 160,000 requests                                                                                                                                                     |
+| Peak demand (15% of the day in one hour)     | about **400 requests per minute** (800 in a burst) and **0.23 to 2.7 million input tokens per minute**, depending on how well prefix caching works and how the provider counts cached tokens                                |
+| Effect of prefix caching (document 04)       | Uncached input drops from 109,280 to **23,400** (within-turn reuse) or **9,300** (ideal), a 79% to 92% hit ratio                                                                                                            |
+| Effect of trimming tool results from history | Input per journey drops from 109,280 to **63,920** (-42%), and combined with caching to **12,060** uncached tokens                                                                                                          |
+| What loops cost                              | Input grows **faster than linearly** with tool loops per turn: 2 loops is 65,640, 3 is 109,280, 4 is 163,800                                                                                                                |
+| **Free-tier ceiling**                        | A free hosted tier serves **a handful to under a thousand journeys a day**, one to three orders of magnitude below the reference scenario. The $0 deployment therefore runs on a **local model**, with free tiers for demos |
+| ROI shape                                    | At illustrative prices the LLM cost is **cents per journey**, well under 1% of the value of the time saved. The binding constraints are **rate limits, latency and reliability**, not the token bill                        |
 
 ## 2. How to Read This Document
 
@@ -155,7 +155,7 @@ Free tiers exist for development. The maximum journeys per day a free tier can s
 | 1,000 per day (a snapshot of some free routes)          | 62               | 62                               |
 | 14,400 per day (a snapshot of a small, fast model)      | 900              | 900                              |
 
-At 20 to 30 requests per minute the same limits allow about 75 to 112 journeys per hour. These figures are community snapshots from late 2026 and must be re-checked; they illustrate the **order of magnitude**: the reference scenario needs about 160,000 requests a day, **roughly 100 to 3,000 times** more than these free allowances. The honest conclusion for the portfolio: **free hosted tiers are for demos and small evaluations; the 10,000-DAU scenario is an analysis, not something the free deployment serves.**
+At 20 to 30 requests per minute the same limits allow about 75 to 112 journeys per hour. These figures are community snapshots from late 2026 and must be re-checked; they illustrate the **order of magnitude**: the reference scenario needs about 160,000 requests a day, **from about 11 times (the most generous snapshot) to over 3,000 times** more than these free allowances. The honest conclusion for the portfolio: **free hosted tiers are for demos and small evaluations; the 10,000-DAU scenario is an analysis, not something the free deployment serves.**
 
 ### 4.3 Local model capacity (the actual $0 runtime)
 
@@ -187,13 +187,13 @@ The largest prompt in the baseline is 11,300 tokens. If tool results were three 
 
 ## 5. Matching Demand to Supply
 
-| Scenario                | Journeys per day | Peak RPM (burst) | Local model          | Free hosted tier         | Pay-as-you-go          | Provisioned / hybrid         |
-| ----------------------- | ---------------- | ---------------- | -------------------- | ------------------------ | ---------------------- | ---------------------------- |
-| **Demo** (10 users)     | 10               | under 1          | Easy                 | Fits for short bursts    | Not needed             | Not needed                   |
-| **Pilot** (1,000 DAU)   | 1,000            | 40 (80)          | About one slot at C1 | **Exceeds** daily limits | Comfortable            | Not needed                   |
-| **Target** (10,000 DAU) | 10,000           | 400 (800)        | Needs about 10 slots | **Far exceeds**          | Fits a high usage tier | Hybrid sized to the baseline |
+| Scenario                | Journeys per day | Peak RPM (burst) | Local model                                                          | Free hosted tier         | Pay-as-you-go          | Provisioned / hybrid         |
+| ----------------------- | ---------------- | ---------------- | -------------------------------------------------------------------- | ------------------------ | ---------------------- | ---------------------------- |
+| **Demo** (10 users)     | 10               | under 1          | Easy                                                                 | Fits for short bursts    | Not needed             | Not needed                   |
+| **Pilot** (1,000 DAU)   | 1,000            | 40 (80)          | One slot for the daily average, about 4 to hold the peak (C1)        | **Exceeds** daily limits | Comfortable            | Not needed                   |
+| **Target** (10,000 DAU) | 10,000           | 400 (800)        | About 10 slots for the daily average, about 34 to hold the peak (C1) | **Far exceeds**          | Fits a high usage tier | Hybrid sized to the baseline |
 
-The pilot figure uses 1,000 x 16 / 24 x 15% x 60... in short, one tenth of the target's request rate: about 40 requests per minute at the peak.
+Pilot peak: 15% of 1,000 journeys is 150 in the peak hour, times 16 calls, divided by 60, is 40 requests per minute. Slots needed to hold the peak are peak-hour journeys divided by the journeys one slot completes per hour (44 at scenario C1): 150 / 44 is about 4 for the pilot, and 1,500 / 44 is about 34 for the target. Sizing to the daily average instead would leave the peak hour queuing.
 
 ## 6. Sensitivity
 
